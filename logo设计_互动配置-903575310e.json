@@ -1,0 +1,18 @@
+{
+  "version": "2.0",
+  "title": "标志与VI设计 - 互动式知识图谱",
+  "metadata": {
+    "course_name": "标志与VI设计",
+    "author": "艺术设计学院",
+    "created_date": "2024-01-01",
+    "last_updated": "2024-01-01"
+  },
+  "interactive_features": {
+    "progress_tracking": true,
+    "notes_system": true,
+    "quiz_system": true,
+    "search_functionality": true,
+    "animation_enabled": true
+  },
+  "nodes": {}
+}

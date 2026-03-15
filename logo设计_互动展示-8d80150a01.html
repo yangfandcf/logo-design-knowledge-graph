@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>标志与VI设计 - 互动式知识图谱</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 左侧导航栏 */
+        .sidebar {
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        .sidebar h1 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .sidebar h2 {
+            font-size: 14px;
+            color: #666;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .nav-list {
+            list-style: none;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .nav-item {
+            padding: 10px 15px;
+            margin-bottom: 5px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .nav-item:hover {
+            background: #f0f0f0;
+            transform: translateX(5px);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
+        }
+
+        .nav-item.completed {
+            background: #4caf50;
+            color: white;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50 0%, #8bc34a 100%);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .progress-text {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        /* 搜索框 */
+        .search-box {
+            margin-bottom: 15px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 20px;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+        }
+
+        /* 主内容区 */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* 工具栏 */
+        .toolbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .toolbar-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .toolbar-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .toolbar-btn:hover {
+            background: #e0e0e0;
+            transform: translateY(-2px);
+        }
+
+        .toolbar-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        /* 知识图谱容器 */
+        .graph-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .graph-canvas {
+            width: 100%;
+            height: 100%;
+            background: #f8f9fa;
+            cursor: move;
+        }
+
+        /* 内容弹窗 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 20px 25px;
+            border-bottom: 2px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.3s;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .modal-body {
+            padding: 25px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-content {
+            line-height: 1.8;
+            color: #555;
+        }
+
+        .modal-content h3 {
+            color: #333;
+            margin-bottom: 15px;
+            margin-top: 20px;
+        }
+
+        .modal-content p {
+            margin-bottom: 10px;
+        }
+
+        .resource-list {
+            display: grid;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .resource-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .resource-item:hover {
+            background: #f0f0f0;
+            transform: translateX(5px);
+        }
+
+        .resource-type {
+            font-size: 12px;
+            color: #667eea;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .resource-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .resource-meta {
+            font-size: 12px;
+            color: #888;
+        }
+
+        /* 测验系统 */
+        .quiz-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .quiz-question {
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .quiz-options {
+            display: grid;
+            gap: 10px;
+        }
+
+        .quiz-option {
+            padding: 12px 15px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quiz-option:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .quiz-option.selected {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .quiz-option.correct {
+            border-color: #4caf50;
+            background: #4caf50;
+            color: white;
+        }
+
+        .quiz-option.wrong {
+            border-color: #f44336;
+            background: #f44336;
+            color: white;
+        }
+
+        .quiz-submit {
+            margin-top: 15px;
+            padding: 10px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .quiz-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        /* 笔记系统 */
+        .notes-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: #fff8e1;
+            border-radius: 8px;
+            border: 2px solid #ffecb3;
+        }
+
+        .notes-textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 2px solid #ffecb3;
+            border-radius: 5px;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        .notes-save {
+            margin-top: 10px;
+            padding: 8px 20px;
+            background: #ffb74d;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        /* 提示工具 */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            max-width: 250px;
+            z-index: 1000;
+            pointer-events: none;
+            display: none;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .tooltip.active {
+            display: block;
+        }
+
+        /* 状态指示器 */
+        .status-indicators {
+            position: absolute;
+            top: 70px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-dot.active {
+            background: #4caf50;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.inactive {
+            background: #e0e0e0;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                left: -280px;
+                transition: left 0.3s;
+            }
+
+            .sidebar.active {
+                left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧导航栏 -->
+        <aside class="sidebar">
+            <h1>📚 标志与VI设计</h1>
+            
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="搜索知识点...">
+            </div>
+
+            <div class="progress-text">学习进度</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">0%</div>
+
+            <h2>课程目录</h2>
+            <ul class="nav-list" id="navList">
+                <li class="nav-item" data-node="chapter1">第一章 标志起源与发展</li>
+                <li class="nav-item" data-node="chapter2">第二章 标志分类体系</li>
+                <li class="nav-item" data-node="chapter3">第三章 标志类型详解</li>
+                <li class="nav-item" data-node="chapter4">第四章 创意构思方法</li>
+                <li class="nav-item" data-node="chapter5">第五章 设计技巧详解</li>
+            </ul>
+
+            <h2>快捷功能</h2>
+            <ul class="nav-list">
+                <li class="nav-item" onclick="showNotesPanel()">📝 我的笔记</li>
+                <li class="nav-item" onclick="showProgress()">📊 学习进度</li>
+                <li class="nav-item" onclick="resetProgress()">🔄 重置进度</li>
+            </ul>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <div class="toolbar">
+                <div class="toolbar-buttons">
+                    <button class="toolbar-btn active" onclick="toggleView('graph')">知识图谱</button>
+                    <button class="toolbar-btn" onclick="toggleView('list')">列表视图</button>
+                    <button class="toolbar-btn" onclick="zoomIn()">放大</button>
+                    <button class="toolbar-btn" onclick="zoomOut()">缩小</button>
+                    <button class="toolbar-btn" onclick="resetView()">复位</button>
+                </div>
+                <div class="toolbar-buttons">
+                    <button class="toolbar-btn" onclick="exportData()">导出数据</button>
+                    <button class="toolbar-btn" onclick="showHelp()">帮助</button>
+                </div>
+            </div>
+
+            <div class="graph-container">
+                <embed id="graphCanvas" class="graph-canvas" src="logo设计_互动版知识图谱.drawio" type="image/svg+xml">
+                
+                <div class="status-indicators">
+                    <div class="status-item">
+                        <div class="status-dot active"></div>
+                        <span>进度追踪：启用</span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-dot active"></div>
+                        <span>笔记系统：启用</span>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-dot active"></div>
+                        <span>测验功能：启用</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 内容弹窗 -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">知识点标题</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- 动态内容 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示工具 -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // 全局变量
+        let currentZoom = 1;
+        let learningData = {
+            progress: 0,
+            completedNodes: [],
+            notes: {},
+            quizResults: {},
+            lastAccessed: null
+        };
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            setupEventListeners();
+            updateProgressDisplay();
+            setupInteractiveGraph();
+        });
+
+        // 加载学习数据
+        function loadData() {
+            const saved = localStorage.getItem('logoDesignLearningData');
+            if (saved) {
+                learningData = JSON.parse(saved);
+            }
+        }
+
+        // 保存学习数据
+        function saveData() {
+            learningData.lastAccessed = new Date().toISOString();
+            localStorage.setItem('logoDesignLearningData', JSON.stringify(learningData));
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 导航项点击
+            document.querySelectorAll('.nav-item[data-node]').forEach(item => {
+                item.addEventListener('click', function() {
+                    const nodeId = this.getAttribute('data-node');
+                    showNodeContent(nodeId);
+                    
+                    // 更新活动状态
+                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // 搜索功能
+            const searchInput = document.querySelector('.search-input');
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    if (text.includes(query)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+
+            // 工具栏按钮
+            document.querySelectorAll('.toolbar-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.toolbar-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+        }
+
+        // 设置交互式知识图谱
+        function setupInteractiveGraph() {
+            const graphCanvas = document.getElementById('graphCanvas');
+            
+            // 加载互动配置
+            fetch('logo设计_互动配置.json')
+                .then(response => response.json())
+                .then(config => {
+                    window.interactiveConfig = config;
+                    console.log('互动配置加载成功:', config);
+                    
+                    // 为SVG中的节点添加点击事件
+                    graphCanvas.addEventListener('load', function() {
+                        const svgDoc = this.getSVGDocument();
+                        if (svgDoc) {
+                            setupSVGInteractivity(svgDoc);
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('加载互动配置失败:', error);
+                });
+
+            // 鼠标悬停显示提示
+            graphCanvas.addEventListener('mousemove', function(e) {
+                // 实现悬停提示逻辑
+            });
+        }
+
+        // 设置SVG交互性
+        function setupSVGInteractivity(svgDoc) {
+            const nodes = svgDoc.querySelectorAll('[id^="node"], [id^="c"], [id^="chapter"]');
+            
+            nodes.forEach(node => {
+                const nodeId = node.getAttribute('id');
+                if (nodeId && window.interactiveConfig && window.interactiveConfig.nodes[nodeId]) {
+                    const nodeConfig = window.interactiveConfig.nodes[nodeId];
+                    
+                    // 添加点击事件
+                    node.style.cursor = 'pointer';
+                    node.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        showNodeContent(nodeId);
+                    });
+
+                    // 添加悬停提示
+                    if (nodeConfig.tooltip) {
+                        node.addEventListener('mouseenter', function(e) {
+                            showTooltip(nodeConfig.tooltip, e);
+                        });
+                        node.addEventListener('mouseleave', function() {
+                            hideTooltip();
+                        });
+                    }
+                }
+            });
+        }
+
+        // 显示节点内容
+        function showNodeContent(nodeId) {
+            if (!window.interactiveConfig || !window.interactiveConfig.nodes[nodeId]) {
+                console.error('未找到节点配置:', nodeId);
+                return;
+            }
+
+            const nodeConfig = window.interactiveConfig.nodes[nodeId];
+            
+            // 更新弹窗标题
+            document.getElementById('modalTitle').textContent = nodeConfig.label;
+            
+            // 构建弹窗内容
+            let contentHtml = `<div class="modal-content">`;
+            
+            // 添加描述文本
+            if (nodeConfig.content && nodeConfig.content.resources.length > 0) {
+                contentHtml += `<h3>📚 学习资源</h3>`;
+                contentHtml += `<div class="resource-list">`;
+                
+                nodeConfig.content.resources.forEach(resource => {
+                    const typeIcon = resource.type === 'video' ? '🎥' : 
+                                    resource.type === 'document' ? '📄' : '🖼️';
+                    contentHtml += `
+                        <div class="resource-item" onclick="openResource('${resource.type}', '${resource.title}')">
+                            <div class="resource-type">${typeIcon} ${resource.type}</div>
+                            <div class="resource-title">${resource.title}</div>
+                            <div class="resource-meta">${resource.duration || ''}</div>
+                        </div>
+                    `;
+                });
+                
+                contentHtml += `</div>`;
+            }
+
+            // 添加测验系统
+            if (nodeConfig.quiz && nodeConfig.quiz.enabled && nodeConfig.quiz.questions.length > 0) {
+                contentHtml += `<div class="quiz-container">`;
+                contentHtml += `<h3>🎯 知识测验</h3>`;
+                
+                nodeConfig.quiz.questions.forEach((question, index) => {
+                    contentHtml += `
+                        <div class="quiz-question">${index + 1}. ${question.question}</div>
+                        <div class="quiz-options">
+                    `;
+                    
+                    question.options.forEach((option, optIndex) => {
+                        contentHtml += `
+                            <div class="quiz-option" onclick="selectOption(this, ${optIndex}, ${question.answer})">
+                                ${option}
+                            </div>
+                        `;
+                    });
+                    
+                    contentHtml += `</div>`;
+                });
+                
+                contentHtml += `<button class="quiz-submit" onclick="submitQuiz('${nodeId}')">提交答案</button>`;
+                contentHtml += `</div>`;
+            }
+
+            // 添加笔记系统
+            if (nodeConfig.notes && nodeConfig.notes.enabled) {
+                const savedNote = learningData.notes[nodeId] || nodeConfig.notes.default_note || '';
+                contentHtml += `
+                    <div class="notes-container">
+                        <h3>📝 学习笔记</h3>
+                        <textarea class="notes-textarea" id="note-${nodeId}" placeholder="在这里记录你的学习笔记...">${savedNote}</textarea>
+                        <button class="notes-save" onclick="saveNote('${nodeId}')">保存笔记</button>
+                    </div>
+                `;
+            }
+
+            contentHtml += `</div>`;
+            
+            document.getElementById('modalBody').innerHTML = contentHtml;
+            document.getElementById('modalOverlay').classList.add('active');
+
+            // 更新学习进度
+            updateNodeProgress(nodeId);
+        }
+
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('active');
+        }
+
+        // 显示提示
+        function showTooltip(text, event) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.textContent = text;
+            tooltip.style.left = event.pageX + 10 + 'px';
+            tooltip.style.top = event.pageY + 10 + 'px';
+            tooltip.classList.add('active');
+        }
+
+        // 隐藏提示
+        function hideTooltip() {
+            document.getElementById('tooltip').classList.remove('active');
+        }
+
+        // 选择测验选项
+        function selectOption(element, optionIndex, correctIndex) {
+            const parent = element.parentElement;
+            parent.querySelectorAll('.quiz-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            element.dataset.selected = optionIndex;
+            element.dataset.correct = correctIndex;
+        }
+
+        // 提交测验
+        function submitQuiz(nodeId) {
+            const quizContainer = document.querySelector('.quiz-container');
+            const questions = quizContainer.querySelectorAll('.quiz-question');
+            let correctCount = 0;
+            let totalQuestions = questions.length;
+
+            questions.forEach((question, index) => {
+                const selectedOption = question.nextElementSibling.querySelector('.quiz-option.selected');
+                if (selectedOption) {
+                    const selected = parseInt(selectedOption.dataset.selected);
+                    const correct = parseInt(selectedOption.dataset.correct);
+                    
+                    if (selected === correct) {
+                        selectedOption.classList.add('correct');
+                        correctCount++;
+                    } else {
+                        selectedOption.classList.add('wrong');
+                    }
+                }
+            });
+
+            // 保存测验结果
+            if (!learningData.quizResults[nodeId]) {
+                learningData.quizResults[nodeId] = {};
+            }
+            learningData.quizResults[nodeId] = {
+                correct: correctCount,
+                total: totalQuestions,
+                score: Math.round((correctCount / totalQuestions) * 100)
+            };
+
+            // 标记节点为已完成
+            if (correctCount === totalQuestions) {
+                if (!learningData.completedNodes.includes(nodeId)) {
+                    learningData.completedNodes.push(nodeId);
+                    updateProgressDisplay();
+                }
+            }
+
+            saveData();
+            
+            // 显示结果
+            alert(`测验完成！\n正确：${correctCount}/${totalQuestions}\n得分：${learningData.quizResults[nodeId].score}分`);
+        }
+
+        // 保存笔记
+        function saveNote(nodeId) {
+            const textarea = document.getElementById(`note-${nodeId}`);
+            if (textarea) {
+                learningData.notes[nodeId] = textarea.value;
+                saveData();
+                alert('笔记保存成功！');
+            }
+        }
+
+        // 更新节点进度
+        function updateNodeProgress(nodeId) {
+            learningData.lastAccessed = nodeId;
+            if (!learningData.completedNodes.includes(nodeId)) {
+                learningData.completedNodes.push(nodeId);
+                updateProgressDisplay();
+            }
+            saveData();
+        }
+
+        // 更新进度显示
+        function updateProgressDisplay() {
+            const totalNodes = Object.keys(window.interactiveConfig?.nodes || {}).length;
+            const completedCount = learningData.completedNodes.length;
+            const progress = totalNodes > 0 ? Math.round((completedCount / totalNodes) * 100) : 0;
+            
+            learningData.progress = progress;
+            
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('progressText').textContent = progress + '%';
+            
+            // 更新导航项状态
+            document.querySelectorAll('.nav-item[data-node]').forEach(item => {
+                const nodeId = item.getAttribute('data-node');
+                if (learningData.completedNodes.includes(nodeId)) {
+                    item.classList.add('completed');
+                } else {
+                    item.classList.remove('completed');
+                }
+            });
+        }
+
+        // 视图切换
+        function toggleView(view) {
+            const graphCanvas = document.getElementById('graphCanvas');
+            if (view === 'list') {
+                graphCanvas.style.display = 'none';
+                // 实现列表视图
+            } else {
+                graphCanvas.style.display = 'block';
+            }
+        }
+
+        // 缩放功能
+        function zoomIn() {
+            currentZoom += 0.1;
+            document.getElementById('graphCanvas').style.transform = `scale(${currentZoom})`;
+        }
+
+        function zoomOut() {
+            if (currentZoom > 0.5) {
+                currentZoom -= 0.1;
+                document.getElementById('graphCanvas').style.transform = `scale(${currentZoom})`;
+            }
+        }
+
+        function resetView() {
+            currentZoom = 1;
+            document.getElementById('graphCanvas').style.transform = 'scale(1)';
+        }
+
+        // 导出数据
+        function exportData() {
+            const dataStr = JSON.stringify(learningData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'logo_design_learning_data.json';
+            link.click();
+        }
+
+        // 显示帮助
+        function showHelp() {
+            alert('使用帮助：\n\n1. 点击知识图谱中的节点查看详细内容\n2. 完成测验来巩固学习成果\n3. 记录笔记帮助你复习\n4. 学习进度会自动保存\n5. 使用搜索功能快速找到知识点');
+        }
+
+        // 显示笔记面板
+        function showNotesPanel() {
+            let notesHtml = '我的笔记：\n\n';
+            Object.entries(learningData.notes).forEach(([nodeId, note]) => {
+                if (note && note.trim()) {
+                    notesHtml += `${nodeId}: ${note}\n\n`;
+                }
+            });
+            if (Object.keys(learningData.notes).length === 0) {
+                notesHtml += '暂无笔记';
+            }
+            alert(notesHtml);
+        }
+
+        // 显示进度
+        function showProgress() {
+            let progressHtml = '学习进度：\n\n';
+            progressHtml += `总进度：${learningData.progress}%\n\n`;
+            progressHtml += `已完成节点：${learningData.completedNodes.length}个\n\n`;
+            progressHtml += `测验结果：\n`;
+            Object.entries(learningData.quizResults).forEach(([nodeId, result]) => {
+                progressHtml += `${nodeId}: ${result.score}分 (${result.correct}/${result.total})\n`;
+            });
+            alert(progressHtml);
+        }
+
+        // 重置进度
+        function resetProgress() {
+            if (confirm('确定要重置所有学习进度吗？此操作不可恢复。')) {
+                learningData = {
+                    progress: 0,
+                    completedNodes: [],
+                    notes: {},
+                    quizResults: {},
+                    lastAccessed: null
+                };
+                saveData();
+                updateProgressDisplay();
+                alert('进度已重置');
+            }
+        }
+
+        // 打开资源
+        function openResource(type, title) {
+            alert(`正在打开${type}：${title}\n\n此处可集成实际的资源打开逻辑`);
+        }
+
+        // 关闭弹窗（点击外部）
+        document.getElementById('modalOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+
+        // 键盘快捷键
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
